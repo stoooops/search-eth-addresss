@@ -1,3 +1,6 @@
+# keystore generated files may end up in this dir
+*.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
