@@ -52,6 +52,7 @@ class Address:
         public_key: bytes = verifying_key.to_string("uncompressed")
         # Compute the Keccak-256 hash of the public key bytes.
         # Take the last 20 bytes of the hash.
+        # trim the uncompressed public key prefix (0x04) via [1:]
         public_key_hash: bytes = keccak.new(
             digest_bits=256, data=public_key[1:]
         ).digest()[-20:]
@@ -78,3 +79,17 @@ class KeyPair:
 
     address: Address
     private_key: PrivateKey
+
+
+if __name__ == "__main__":
+    public_key_hex = (
+        "0x02e48450d9f1fe6cd8b422e23c075153e2aba775224fe5b614a8e960e19574a4bc"
+    )
+    public_key: bytes = bytes.fromhex(public_key_hex[2:])
+    hashed = keccak.new(digest_bits=256, data=public_key[1:]).digest()
+    print(hashed.hex())
+    # Create a private key
+    public_key_hash: bytes = hashed[-20:]
+    # Prepend the string with "0x" to create the Ethereum address.
+    address = "0x" + public_key_hash.hex()
+    print(address)

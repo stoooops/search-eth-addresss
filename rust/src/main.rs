@@ -1,3 +1,7 @@
+mod crypto;
+
 fn main() {
-    println!("Hello, world!");
+    let result = crypto::generate().unwrap();
+    println!("mnemonic: {}", result.mnemonic.phrase());
+    println!("address: {}", result.address);
 }
