@@ -1,3 +1,6 @@
+use bip32::Language;
+
+use crate::crypto::{AddressGenerator, MnemonicAddressGenerator};
 use crate::randnum::{NumberGenerator, RandNumberGenerator};
 
 mod crypto;
@@ -5,8 +8,11 @@ mod randnum;
 
 fn main() {
     let mut rng = RandNumberGenerator {};
-    let entropy = rng.generate();
-    let result = crypto::generate(entropy).unwrap();
-    println!("mnemonic: {}", result.mnemonic.phrase());
-    println!("address: {}", result.address);
+    let address_generator: Box<dyn AddressGenerator> = Box::new(MnemonicAddressGenerator {
+        language: Language::English,
+    });
+
+    let entropy: [u8; 32] = rng.generate();
+    let address: String = address_generator.generate(entropy).unwrap();
+    println!("address: {}", address);
 }
