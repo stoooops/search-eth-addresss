@@ -7,6 +7,8 @@ use num_bigint::BigInt;
 use num_traits::One;
 use rand_core::OsRng;
 use tiny_keccak::Hasher;
+
+use crate::randnum::Entropy;
 // reference implementation from python hdwallet:
 //
 //   ```python
@@ -57,11 +59,12 @@ pub struct MnemonicAddress {
     pub address: String,
 }
 
-pub fn generate() -> Result<MnemonicAddress, bip32::Error> {
+pub fn generate(entropy: Entropy) -> Result<MnemonicAddress, bip32::Error> {
     // let phrase = "dust royal enter exhaust hand hood fork tree flush goat iron rookie job power gold remember small luxury raw broccoli access helmet left fame";
+    // Self::from_entropy(entropy, language)
 
     // Generate random Mnemonic using the default language (English)
-    let mnemonic = Mnemonic::random(&mut OsRng, Default::default());
+    let mnemonic = Mnemonic::from_entropy(entropy, Default::default());
     // let mnemonic: Mnemonic = Mnemonic::new(phrase, Default::default())?;
 
     // Derive a BIP39 seed value using the given password
