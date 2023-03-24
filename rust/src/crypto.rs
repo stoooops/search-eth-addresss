@@ -10,8 +10,11 @@ use crate::randnum::Entropy;
 
 pub trait AddressGenerator {
     fn generate(&self, entropy: Entropy) -> Result<String, bip32::Error>;
+
+    fn clone_box(&self) -> Box<dyn AddressGenerator>;
 }
 
+#[derive(Copy, Clone)]
 pub struct MnemonicAddressGenerator {
     pub language: Language,
 }
@@ -40,6 +43,10 @@ impl AddressGenerator for MnemonicAddressGenerator {
         let address = format!("0x{}", hex::encode(address_bytes));
 
         Ok(address)
+    }
+
+    fn clone_box(&self) -> Box<dyn AddressGenerator> {
+        Box::new(*self)
     }
 }
 

@@ -82,10 +82,18 @@ impl ThreadPoolSearcher {
             "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
         )));
         let completed_jobs = Arc::new(AtomicUsize::new(0));
+
+        let rng: Box<dyn NumberGenerator + Send + Sync> = Box::new(RandNumberGenerator {});
+        let address_generator: Box<dyn AddressGenerator + Send + Sync> =
+            Box::new(MnemonicAddressGenerator {
+                language: Language::English,
+            });
+        let criteria: Box<dyn CriteriaPredicate + Send + Sync> = Box::new(LessThanCriteria {});
+
+        // logging
         let num_completed_jobs_log_width = format!("{}", self.num_jobs).len();
         let num_threads_log_width = format!("{}", self.thread_pool.current_num_threads()).len();
         let num_searches_log_width = format!("{}", self.num_jobs * self.attempts_per_job).len();
-        let criteria: Box<dyn CriteriaPredicate + Send + Sync> = Box::new(LessThanCriteria {});
 
         self.thread_pool.install(|| {
             (0..self.num_jobs)
@@ -94,16 +102,11 @@ impl ThreadPoolSearcher {
                 .for_each_with(
                     best_address.clone(),
                     |best: &mut Arc<Mutex<String>>, (_job_num, _worker_id)| {
-                        let rng: Box<dyn NumberGenerator> = Box::new(RandNumberGenerator {});
-                        let address_generator: Box<dyn AddressGenerator> =
-                            Box::new(MnemonicAddressGenerator {
-                                language: Language::English,
-                            });
 
                         // Criteria gets moved here, so we need to clone it
                         // but it's a box so we need to clone the box
                         let mut searcher: Searcher =
-                            Searcher::new(rng, address_generator, criteria.clone_box(), self.attempts_per_job);
+                            Searcher::new(rng.clone_box(), address_generator.clone_box(), criteria.clone_box(), self.attempts_per_job);
                         let found: SearchResult = searcher.run();
                         let num_completed_jobs = completed_jobs.fetch_add(1, Ordering::SeqCst) + 1;
                         let num_completed_searches: usize = num_completed_jobs * self.attempts_per_job;
