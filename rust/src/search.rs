@@ -1,7 +1,6 @@
-use crate::criteria::LessThanCriteria;
+use crate::criteria::CriteriaPredicate;
 use crate::crypto::AddressGenerator;
-use crate::randnum::{NumberGenerator, RandNumberGenerator};
-use crate::{criteria::CriteriaPredicate, crypto::MnemonicAddressGenerator};
+use crate::randnum::NumberGenerator;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -57,14 +56,24 @@ impl<'a> Searcher<'a> {
     }
 }
 
-pub struct ThreadPoolSearcher {
+pub struct ThreadPoolSearcher<'a> {
     thread_pool: ThreadPool,
     num_jobs: usize,
     attempts_per_job: usize,
+    number_generator: Box<dyn NumberGenerator + Send + Sync + 'a>,
+    address_generator: Box<dyn AddressGenerator + Send + Sync + 'a>,
+    criteria_predicate: Box<dyn CriteriaPredicate + Send + Sync + 'a>,
 }
 
-impl ThreadPoolSearcher {
-    pub fn new(num_threads: usize, num_jobs: usize, attempts_per_job: usize) -> Self {
+impl<'a> ThreadPoolSearcher<'a> {
+    pub fn new(
+        num_threads: usize,
+        num_jobs: usize,
+        attempts_per_job: usize,
+        number_generator: Box<dyn NumberGenerator + Send + Sync + 'a>,
+        address_generator: Box<dyn AddressGenerator + Send + Sync + 'a>,
+        criteria_predicate: Box<dyn CriteriaPredicate + Send + Sync + 'a>,
+    ) -> Self {
         let thread_pool = ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .build()
@@ -74,6 +83,9 @@ impl ThreadPoolSearcher {
             thread_pool,
             num_jobs,
             attempts_per_job,
+            number_generator,
+            address_generator,
+            criteria_predicate,
         }
     }
 
@@ -82,13 +94,6 @@ impl ThreadPoolSearcher {
             "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
         )));
         let completed_jobs = Arc::new(AtomicUsize::new(0));
-
-        let rng: Box<dyn NumberGenerator + Send + Sync> = Box::new(RandNumberGenerator {});
-        let address_generator: Box<dyn AddressGenerator + Send + Sync> =
-            Box::new(MnemonicAddressGenerator {
-                language: Language::English,
-            });
-        let criteria: Box<dyn CriteriaPredicate + Send + Sync> = Box::new(LessThanCriteria {});
 
         // logging
         let num_completed_jobs_log_width = format!("{}", self.num_jobs).len();
@@ -106,13 +111,17 @@ impl ThreadPoolSearcher {
                         // Criteria gets moved here, so we need to clone it
                         // but it's a box so we need to clone the box
                         let mut searcher: Searcher =
-                            Searcher::new(rng.clone_box(), address_generator.clone_box(), criteria.clone_box(), self.attempts_per_job);
+                            Searcher::new(
+                                self.number_generator.clone_box(),
+                                self.address_generator.clone_box(),
+                                self.criteria_predicate.clone_box(),
+                                self.attempts_per_job);
                         let found: SearchResult = searcher.run();
                         let num_completed_jobs = completed_jobs.fetch_add(1, Ordering::SeqCst) + 1;
                         let num_completed_searches: usize = num_completed_jobs * self.attempts_per_job;
 
                         let mut best_address_guard: MutexGuard<String> = best.lock().unwrap();
-                        if criteria.better(&found.address, &*best_address_guard) {
+                        if self.criteria_predicate.better(&found.address, &*best_address_guard) {
                             *best_address_guard = found.address;
                             let thread_index = current_thread_index().unwrap_or(0);
                             println!(
