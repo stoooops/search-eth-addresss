@@ -6,7 +6,7 @@ use crate::{criteria::CriteriaPredicate, crypto::MnemonicAddressGenerator};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use bip32::Language;
+use bip32::{Language, Mnemonic};
 use rayon::{current_thread_index, prelude::*, ThreadPool, ThreadPoolBuilder};
 
 pub struct Searcher<'a> {
@@ -14,6 +14,11 @@ pub struct Searcher<'a> {
     address_generator: Box<dyn AddressGenerator + 'a>,
     criteria_predicate: Box<dyn CriteriaPredicate + 'a>,
     max_attempts: usize,
+}
+
+pub struct SearchResult {
+    pub address: String,
+    pub seed: [u8; 32],
 }
 
 impl<'a> Searcher<'a> {
@@ -31,18 +36,24 @@ impl<'a> Searcher<'a> {
         }
     }
 
-    pub fn run(&mut self) -> String {
+    pub fn run(&mut self) -> SearchResult {
         let input_num = self.number_generator.generate();
         let address = self.address_generator.generate(input_num).unwrap();
-        let mut best_address = address;
+        let mut best: SearchResult = SearchResult {
+            address,
+            seed: input_num,
+        };
         for _ in 0..self.max_attempts {
             let entropy = self.number_generator.generate();
             let address = self.address_generator.generate(entropy).unwrap();
-            if self.criteria_predicate.better(&address, &best_address) {
-                best_address = address;
+            if self.criteria_predicate.better(&address, &best.address) {
+                best = SearchResult {
+                    address,
+                    seed: entropy,
+                };
             }
         }
-        best_address
+        best
     }
 }
 
@@ -74,6 +85,7 @@ impl ThreadPoolSearcher {
         let num_completed_jobs_log_width = format!("{}", self.num_jobs).len();
         let num_threads_log_width = format!("{}", self.thread_pool.current_num_threads()).len();
         let num_searches_log_width = format!("{}", self.num_jobs * self.attempts_per_job).len();
+        let criteria: Box<dyn CriteriaPredicate + Send + Sync> = Box::new(LessThanCriteria {});
 
         self.thread_pool.install(|| {
             (0..self.num_jobs)
@@ -81,23 +93,24 @@ impl ThreadPoolSearcher {
                 .enumerate()
                 .for_each_with(
                     best_address.clone(),
-                    |best_addr: &mut Arc<Mutex<String>>, (_job_num, _worker_id)| {
+                    |best: &mut Arc<Mutex<String>>, (_job_num, _worker_id)| {
                         let rng: Box<dyn NumberGenerator> = Box::new(RandNumberGenerator {});
                         let address_generator: Box<dyn AddressGenerator> =
                             Box::new(MnemonicAddressGenerator {
                                 language: Language::English,
                             });
-                        let criteria: Box<dyn CriteriaPredicate> = Box::new(LessThanCriteria {});
 
+                        // Criteria gets moved here, so we need to clone it
+                        // but it's a box so we need to clone the box
                         let mut searcher: Searcher =
-                            Searcher::new(rng, address_generator, criteria, self.attempts_per_job);
-                        let found_address: String = searcher.run();
+                            Searcher::new(rng, address_generator, criteria.clone_box(), self.attempts_per_job);
+                        let found: SearchResult = searcher.run();
                         let num_completed_jobs = completed_jobs.fetch_add(1, Ordering::SeqCst) + 1;
                         let num_completed_searches: usize = num_completed_jobs * self.attempts_per_job;
 
-                        let mut best_address_guard: MutexGuard<String> = best_addr.lock().unwrap();
-                        if found_address < *best_address_guard {
-                            *best_address_guard = found_address;
+                        let mut best_address_guard: MutexGuard<String> = best.lock().unwrap();
+                        if criteria.better(&found.address, &*best_address_guard) {
+                            *best_address_guard = found.address;
                             let thread_index = current_thread_index().unwrap_or(0);
                             println!(
                                 "Thread #{:twidth$}     Job #{:jwidth$}     Found #{:swidth$}     found     {}",
@@ -109,6 +122,8 @@ impl ThreadPoolSearcher {
                                 jwidth = num_completed_jobs_log_width,
                                 swidth = num_searches_log_width
                             );
+                            let mnemonic: Mnemonic = Mnemonic::from_entropy(found.seed, Language::English);
+                            println!("{}", mnemonic.phrase());
                         } else if (num_completed_jobs % 1000) == 0 {
                             let thread_index = current_thread_index().unwrap_or(0);
                             println!(
@@ -121,6 +136,8 @@ impl ThreadPoolSearcher {
                                 jwidth = num_completed_jobs_log_width,
                                 swidth = num_searches_log_width
                             );
+                            let mnemonic: Mnemonic = Mnemonic::from_entropy(found.seed, Language::English);
+                            println!("{}", mnemonic.phrase());
                         }
                     },
                 );
@@ -129,4 +146,15 @@ impl ThreadPoolSearcher {
         let best_address_guard: MutexGuard<String> = best_address.lock().unwrap();
         best_address_guard.clone()
     }
+
+    // fn update_best(
+    //     found: SearchResult,
+    //     best: &mut Arc<Mutex<String>>,
+    //     criteria: &Box<dyn CriteriaPredicate>,
+    // ) {
+    //     let mut best_address_guard: MutexGuard<String> = best.lock().unwrap();
+    //     if criteria.better(&found.address, &*best.lock().unwrap()) {
+    //         *best = found;
+    //     }
+    // }
 }
