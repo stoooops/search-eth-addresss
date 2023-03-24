@@ -1,23 +1,17 @@
-use bip32::Language;
-
-use crate::criteria::{CriteriaPredicate, LessThanCriteria};
-use crate::crypto::{AddressGenerator, MnemonicAddressGenerator};
-use crate::randnum::{NumberGenerator, RandNumberGenerator};
-use crate::search::Searcher;
+use crate::pool::SearcherPool;
 
 mod criteria;
 mod crypto;
+mod pool;
 mod randnum;
 mod search;
 
 fn main() {
-    let rng: Box<dyn NumberGenerator> = Box::new(RandNumberGenerator {});
-    let address_generator: Box<dyn AddressGenerator> = Box::new(MnemonicAddressGenerator {
-        language: Language::English,
-    });
-    let criteria: Box<dyn CriteriaPredicate> = Box::new(LessThanCriteria {});
+    let num_workers = 40;
+    let max_attempts = 100;
 
-    let mut searcher = Searcher::new(rng, address_generator, criteria, 1000);
-    let best = searcher.run();
-    println!("best:         {}", best);
+    let searcher_pool = SearcherPool::new(num_workers, max_attempts);
+    let best_address = searcher_pool.run();
+
+    println!("Best address found: {}", best_address);
 }

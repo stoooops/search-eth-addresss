@@ -29,8 +29,8 @@ impl<'a> Searcher<'a> {
         let address = self.address_generator.generate(input_num).unwrap();
         let mut best_address = address;
         for _ in 0..self.max_attempts {
-            let input_num = self.number_generator.generate();
-            let address = self.address_generator.generate(input_num).unwrap();
+            let entropy = self.number_generator.generate();
+            let address = self.address_generator.generate(entropy).unwrap();
             if self.criteria_predicate.better(&address, &best_address) {
                 best_address = address;
             }
