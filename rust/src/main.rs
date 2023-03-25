@@ -39,8 +39,8 @@ struct Args {
 fn main() {
     let args = Args::parse();
     let num_threads: usize = args.threads.unwrap_or(16);
-    let num_jobs: usize = args.jobs.unwrap_or(10_000);
-    let attempts_per_job: usize = args.each.unwrap_or(100);
+    let num_jobs: usize = args.jobs.unwrap_or(1_000);
+    let attempts_per_job: usize = args.each.unwrap_or(1_000);
 
     setup_logger().expect("Failed to set up logger");
     info!(
@@ -64,6 +64,5 @@ fn main() {
     );
     let best_address = searcher_pool.run();
 
-    info!("Best address found: {}", best_address);
-    info!("Program finished");
+    info!("Best: {}", best_address);
 }

@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  vanitygen:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${CONTAINER_ID:-vanitygen}
+    volumes:
+      - .:/app
+    command: cargo run --release -- $CMD_ARGS
+    environment:
+      - CMD_ARGS
+      - CONTAINER_ID
+    init: true
