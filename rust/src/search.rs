@@ -1,7 +1,9 @@
 use crate::criteria::CriteriaPredicate;
 use crate::crypto::AddressGenerator;
 use crate::randnum::NumberGenerator;
+use log::info;
 
+use crate::mnemonic_log;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -124,8 +126,8 @@ impl<'a> ThreadPoolSearcher<'a> {
                         if self.criteria_predicate.better(&found.address, &*best_address_guard) {
                             *best_address_guard = found.address;
                             let thread_index = current_thread_index().unwrap_or(0);
-                            println!(
-                                "Thread #{:twidth$}     Job #{:jwidth$}     Found #{:swidth$}     found     {}",
+                            info!(
+                                "Thread #{:twidth$}     Job #{:jwidth$}     Try #{:swidth$}     found     {}",
                                 thread_index,
                                 num_completed_jobs,
                                 num_completed_searches,
@@ -135,11 +137,11 @@ impl<'a> ThreadPoolSearcher<'a> {
                                 swidth = num_searches_log_width
                             );
                             let mnemonic: Mnemonic = Mnemonic::from_entropy(found.seed, Language::English);
-                            println!("{}", mnemonic.phrase());
+                            mnemonic_log!("{} {}", *best_address_guard, mnemonic.phrase());
                         } else if (num_completed_jobs % 1000) == 0 {
                             let thread_index = current_thread_index().unwrap_or(0);
-                            println!(
-                                "Thread #{:twidth$}     Job #{:jwidth$}     Found #{:swidth$}     -----     {}",
+                            info!(
+                                "Thread #{:twidth$}     Job #{:jwidth$}     Try #{:swidth$}     -----     {}",
                                 thread_index,
                                 num_completed_jobs,
                                 num_completed_searches,
@@ -148,8 +150,6 @@ impl<'a> ThreadPoolSearcher<'a> {
                                 jwidth = num_completed_jobs_log_width,
                                 swidth = num_searches_log_width
                             );
-                            let mnemonic: Mnemonic = Mnemonic::from_entropy(found.seed, Language::English);
-                            println!("{}", mnemonic.phrase());
                         }
                     },
                 );
@@ -158,15 +158,4 @@ impl<'a> ThreadPoolSearcher<'a> {
         let best_address_guard: MutexGuard<String> = best_address.lock().unwrap();
         best_address_guard.clone()
     }
-
-    // fn update_best(
-    //     found: SearchResult,
-    //     best: &mut Arc<Mutex<String>>,
-    //     criteria: &Box<dyn CriteriaPredicate>,
-    // ) {
-    //     let mut best_address_guard: MutexGuard<String> = best.lock().unwrap();
-    //     if criteria.better(&found.address, &*best.lock().unwrap()) {
-    //         *best = found;
-    //     }
-    // }
 }

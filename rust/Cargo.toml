@@ -1,5 +1,5 @@
 [package]
-name = "search_bip39"
+name = "vanitygen"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 bip32 = "0.4.0"
 hex = "0.4.3"
+log = "0.4.17"
+log4rs = "1.2.0"
 num-bigint = "0.4.3"
 num-traits = "0.2.15"
 rand = "0.8.5"
@@ -16,5 +18,5 @@ rayon = "1.7.0"
 tiny-keccak = { version = "2.0.0", features = ["keccak", "sha3"] }
 
 [[bin]]
-name = "search_bip39"
+name = "vanitygen"
 path = "src/main.rs"
