@@ -119,37 +119,40 @@ impl<'a> ThreadPoolSearcher<'a> {
                                 self.criteria_predicate.clone_box(),
                                 self.attempts_per_job);
                         let found: SearchResult = searcher.run();
+                        let found_address: &str = found.address.as_str();
                         let num_completed_jobs = completed_jobs.fetch_add(1, Ordering::SeqCst) + 1;
                         let num_completed_searches: usize = num_completed_jobs * self.attempts_per_job;
 
                         let mut best_address_guard: MutexGuard<String> = best.lock().unwrap();
-                        if self.criteria_predicate.better(&found.address, &*best_address_guard) {
-                            *best_address_guard = found.address;
+
+                        let better: bool = self.criteria_predicate.better(found_address, &*best_address_guard);
+                        if better {
+                            *best_address_guard = String::from(found_address);
+                        }
+
+                        let save = better || found_address.starts_with("0x000000");
+
+                        let s: &str = if better { "best" } else if save { "save" } else { "----" };
+                        let address: &str = if better || save { found_address } else { best_address_guard.as_str() };
+
+                        if save || (num_completed_jobs % 1000) == 0{
                             let thread_index = current_thread_index().unwrap_or(0);
                             info!(
-                                "Thread #{:twidth$}     Job #{:jwidth$}     Try #{:swidth$}     found     {}",
+                                "Thread #{:twidth$}     Job #{:jwidth$}     Try #{:swidth$}     {}     {}",
                                 thread_index,
                                 num_completed_jobs,
                                 num_completed_searches,
-                                *best_address_guard,
+                                s,
+                                address,
                                 twidth = num_threads_log_width,
                                 jwidth = num_completed_jobs_log_width,
                                 swidth = num_searches_log_width
                             );
+                        }
+
+                        if save {
                             let mnemonic: Mnemonic = Mnemonic::from_entropy(found.seed, Language::English);
-                            mnemonic_log!("{} {}", *best_address_guard, mnemonic.phrase());
-                        } else if (num_completed_jobs % 1000) == 0 {
-                            let thread_index = current_thread_index().unwrap_or(0);
-                            info!(
-                                "Thread #{:twidth$}     Job #{:jwidth$}     Try #{:swidth$}     -----     {}",
-                                thread_index,
-                                num_completed_jobs,
-                                num_completed_searches,
-                                *best_address_guard,
-                                twidth = num_threads_log_width,
-                                jwidth = num_completed_jobs_log_width,
-                                swidth = num_searches_log_width
-                            );
+                            mnemonic_log!("{} {}", found_address, mnemonic.phrase());
                         }
                     },
                 );
