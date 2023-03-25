@@ -1,4 +1,5 @@
 use bip32::Language;
+use clap::Parser;
 
 use crate::{
     criteria::{CriteriaPredicate, LessThanCriteria},
@@ -15,12 +16,37 @@ mod randnum;
 mod search;
 use log::info;
 
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// number of threads to use
+    /// default is 16
+    #[arg(long)]
+    threads: Option<usize>,
+
+    /// number of jobs to dispatch
+    /// default is 10,000
+    #[arg(long)]
+    jobs: Option<usize>,
+
+    /// number of attempts per job
+    /// default is 100
+    #[arg(long)]
+    each: Option<usize>,
+}
+
 fn main() {
+    let args = Args::parse();
+    let num_threads: usize = args.threads.unwrap_or(16);
+    let num_jobs: usize = args.jobs.unwrap_or(10_000);
+    let attempts_per_job: usize = args.each.unwrap_or(100);
+
     setup_logger().expect("Failed to set up logger");
-    info!("Starting vanitygen...");
-    let num_threads = 20;
-    let num_jobs = 10_000;
-    let attempts_per_job = 100;
+    info!(
+        "Using {} threads, {} jobs, {} attempts per job",
+        num_threads, num_jobs, attempts_per_job
+    );
 
     let rng: Box<dyn NumberGenerator + Send + Sync> = Box::new(RandNumberGenerator {});
     let address_generator: Box<dyn AddressGenerator + Send + Sync> =
