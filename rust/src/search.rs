@@ -130,12 +130,12 @@ impl<'a> ThreadPoolSearcher<'a> {
                             *best_address_guard = String::from(found_address);
                         }
 
-                        let save = better || found_address.starts_with("0x000000");
+                        let save = found_address.starts_with("0x000000");
 
                         let s: &str = if better { "best" } else if save { "save" } else { "----" };
                         let address: &str = if better || save { found_address } else { best_address_guard.as_str() };
 
-                        if save || (num_completed_jobs % 1000) == 0{
+                        if better || save || (num_completed_jobs % 1000) == 0{
                             let thread_index = current_thread_index().unwrap_or(0);
                             info!(
                                 "Thread #{:twidth$}     Job #{:jwidth$}     Try #{:swidth$}     {}     {}",
