@@ -1,5 +1,6 @@
 use bip32::Language;
 use clap::Parser;
+use num_format::{Locale, ToFormattedString};
 
 use crate::{
     criteria::{CriteriaPredicate, LessThanCriteria},
@@ -39,13 +40,16 @@ struct Args {
 fn main() {
     let args = Args::parse();
     let num_threads: usize = args.threads.unwrap_or(16);
-    let num_jobs: usize = args.jobs.unwrap_or(1_000);
+    let num_jobs: usize = args.jobs.unwrap_or(1_000_000_000);
     let attempts_per_job: usize = args.each.unwrap_or(1_000);
 
     setup_logger().expect("Failed to set up logger");
     info!(
-        "Using {} threads, {} jobs, {} attempts per job",
-        num_threads, num_jobs, attempts_per_job
+        "Using {} threads, {} jobs, {} attempts per job --> {} total attempts",
+        num_threads.to_formatted_string(&Locale::en),
+        num_jobs.to_formatted_string(&Locale::en),
+        attempts_per_job.to_formatted_string(&Locale::en),
+        (num_jobs * attempts_per_job).to_formatted_string(&Locale::en)
     );
 
     let rng: Box<dyn NumberGenerator + Send + Sync> = Box::new(RandNumberGenerator {});

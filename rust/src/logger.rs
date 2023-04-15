@@ -28,13 +28,13 @@ pub fn setup_logger() -> Result<(), Box<dyn std::error::Error>> {
     // Set up log file appender
     let log_file = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{l} - {m}\n")))
-        .build("vanitygen.log")
+        .build("/var/log/vanitygen/vanitygen.log")
         .unwrap();
 
     // Set up a second log file appender
     let mnemonic_log = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{m}\n")))
-        .build("mnemonics.log")?;
+        .build("/var/log/vanitygen/mnemonics.log")?;
 
     // Create logging configuration
     let config = Config::builder()

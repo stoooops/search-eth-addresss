@@ -12,6 +12,7 @@ hex = "0.4.3"
 log = "0.4.17"
 log4rs = "1.2.0"
 num-bigint = "0.4.3"
+num-format = "0.4.4"
 num-traits = "0.2.15"
 rand = "0.8.5"
 rand_core = { version = "0.6", features = ["std"] }

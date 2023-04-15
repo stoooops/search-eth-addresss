@@ -1,9 +1,9 @@
 use crate::criteria::CriteriaPredicate;
 use crate::crypto::AddressGenerator;
+use crate::mnemonic_log;
 use crate::randnum::NumberGenerator;
 use log::info;
-
-use crate::mnemonic_log;
+use num_format::{Locale, ToFormattedString};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -130,7 +130,7 @@ impl<'a> ThreadPoolSearcher<'a> {
                             *best_address_guard = String::from(found_address);
                         }
 
-                        let save = found_address.starts_with("0x000000");
+                        let save = found_address.starts_with("0x00000000");
 
                         let s: &str = if better { "best" } else if save { "save" } else { "----" };
                         let address: &str = if better || save { found_address } else { best_address_guard.as_str() };
@@ -139,9 +139,9 @@ impl<'a> ThreadPoolSearcher<'a> {
                             let thread_index = current_thread_index().unwrap_or(0);
                             info!(
                                 "Thread #{:twidth$}     Job #{:jwidth$}     Try #{:swidth$}     {}     {}",
-                                thread_index,
-                                num_completed_jobs,
-                                num_completed_searches,
+                                thread_index.to_formatted_string(&Locale::en),
+                                num_completed_jobs.to_formatted_string(&Locale::en),
+                                num_completed_searches.to_formatted_string(&Locale::en),
                                 s,
                                 address,
                                 twidth = num_threads_log_width,

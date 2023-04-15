@@ -8,6 +8,7 @@ services:
     container_name: ${CONTAINER_ID:-vanitygen}
     volumes:
       - .:/app
+      - /var/log/vanitygen:/var/log/vanitygen
     command: cargo run --release -- $CMD_ARGS
     environment:
       - CMD_ARGS
